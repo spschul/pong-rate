@@ -27,12 +27,11 @@ fn main() {
         // Parse the line
         let line = line.unwrap();
         let line_segmented: Vec<&str> = line.split(',').map(|x| x.trim()).collect();
+        // format: ( winner, loser )
         let skills = (*players.get(line_segmented[0]).unwrap(), *players.get(line_segmented[1]).unwrap());
-        let scores: (i32, i32) = (line_segmented[2].parse().unwrap(), line_segmented[3].parse().unwrap());
-        let timestamp: u64 = line_segmented[4].parse().unwrap();
 
         // calculate updated skills
-        let new_skills = calc_updated_skill(skills, scores, timestamp);
+        let new_skills = calc_updated_skill(skills);
 
         // update skills
         *players.get_mut(line_segmented[0]).unwrap() = new_skills.0;
@@ -40,23 +39,22 @@ fn main() {
     }
 
     // print out each player and their skill
-    for (player, skill) in &players {
-        println!("{}: {}", player, skill);
+    let mut sorted: Vec<_> = players.iter().collect();
+    sorted.sort_by(|a, b| a.1.cmp(b.1).reverse());
+    for (player, rating) in sorted {
+        println!("{}: {}", player, rating);
     }
 }
 
 // update skill using the Elo rating system
 // reference: https://metinmediamath.wordpress.com/2013/11/27/how-to-calculate-the-elo-rating-including-example/ 
-fn calc_updated_skill(skills: (i32, i32), scores: (i32, i32), timestamp: u64) -> (i32, i32) {
+fn calc_updated_skill(skills: (i32, i32)) -> (i32, i32) {
     let skills = (skills.0 as f64, skills.1 as f64);
     let rating = (10.0f64.powf(skills.0 / 400.0f64), 10.0f64.powf(skills.1 / 400.0f64));
     let total = rating.0 + rating.1;
     let expected_score = (rating.0 / total, rating.1 / total);
-    let actual = if scores.0 > scores.1 {
-        ( 1.0f64, 0.0f64 )
-    } else {
-        ( 0.0f64, 1.0f64 )
-    };
+    // format is ( winner, loser )
+    let actual = ( 1.0f64, 0.0f64 );
     let k = 32.0;
     ((skills.0 + k * (actual.0 - expected_score.0)).round() as i32, (skills.1 + k * (actual.1 - expected_score.1)).round() as i32)
 }
